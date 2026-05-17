@@ -13,7 +13,7 @@ async fn main() -> anyhow::Result<()> {
     let agent = OpenCodeAgent::new();
 
     let mut options = HashMap::new();
-    options.insert("branchName".to_string(), "feature/automation-demo".to_string());
+    options.insert("branchName".to_string(), "feature/rust-agent-pr".to_string());
     options.insert("title".to_string(), "feat: 添加自动化功能".to_string());
     options.insert("description".to_string(), "这是一个由 OpenCode Agent 自动创建的 PR".to_string());
     options.insert("labels".to_string(), "automation,enhancement".to_string());
