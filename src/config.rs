@@ -31,8 +31,8 @@ impl Default for AgentConfig {
     fn default() -> Self {
         Self {
             github: GithubConfig {
-                owner: "your-username".to_string(),
-                repo: "your-repo".to_string(),
+                owner: "sitms586".to_string(),
+                repo: "mywork".to_string(),
                 default_branch: "main".to_string(),
                 token: env::var("GITHUB_TOKEN").unwrap_or_default(),
             },
