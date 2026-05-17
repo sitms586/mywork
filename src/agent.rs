@@ -49,15 +49,18 @@ impl OpenCodeAgent {
             .map(|s| s.split(',').map(|x| x.trim().to_string()).collect())
             .unwrap_or_default();
 
-        branch::create_branch(&branch_name).await?;
+        branch::create_branch(&self.config.github, &branch_name).await?;
 
-        let pr_created = pr_create::create_pr(pr_create::PrCreateOptions {
-            title,
-            body: description,
-            source_branch: branch_name.clone(),
-            target_branch: None,
-            labels: Some(labels),
-        })
+        let pr_created = pr_create::create_pr(
+            &self.config.github,
+            pr_create::PrCreateOptions {
+                title,
+                body: description,
+                source_branch: branch_name.clone(),
+                target_branch: None,
+                labels: Some(labels),
+            },
+        )
         .await?;
 
         if self.config.tasks.require_review && pr_created {
@@ -69,7 +72,7 @@ impl OpenCodeAgent {
 
     async fn review_workflow(&self, options: HashMap<String, String>) -> anyhow::Result<bool> {
         let branch_name = options.get("branchName").cloned().unwrap_or_default();
-        review::review_pr(&branch_name).await
+        review::review_pr(&self.config.github, &branch_name).await
     }
 
     async fn branch_workflow(&self, options: HashMap<String, String>) -> anyhow::Result<bool> {
@@ -77,8 +80,8 @@ impl OpenCodeAgent {
         let branch_name = options.get("branchName").cloned().unwrap_or_default();
 
         match action.as_str() {
-            "create" => branch::create_branch(&branch_name).await,
-            "delete" => branch::delete_branch(&branch_name).await,
+            "create" => branch::create_branch(&self.config.github, &branch_name).await,
+            "delete" => branch::delete_branch(&self.config.github, &branch_name).await,
             _ => Err(anyhow::anyhow!("Unknown branch action: {}", action)),
         }
     }

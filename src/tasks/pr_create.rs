@@ -1,5 +1,4 @@
-use std::process::Command;
-
+use crate::config::GithubConfig;
 use crate::logger::Logger;
 
 pub struct PrCreateOptions {
@@ -7,43 +6,43 @@ pub struct PrCreateOptions {
     pub body: String,
     pub source_branch: String,
     pub target_branch: Option<String>,
+    #[allow(dead_code)]
     pub labels: Option<Vec<String>>,
 }
 
-pub async fn create_pr(options: PrCreateOptions) -> anyhow::Result<bool> {
+pub async fn create_pr(config: &GithubConfig, options: PrCreateOptions) -> anyhow::Result<bool> {
     let target_branch = options.target_branch.unwrap_or_else(|| "main".to_string());
-    let labels = options.labels.unwrap_or_default();
 
     Logger::info(&format!("Creating PR: {}", options.title));
 
-    let mut args = vec![
-        "pr".to_string(),
-        "create".to_string(),
-        "--title".to_string(),
-        options.title,
-        "--body".to_string(),
-        options.body,
-        "--source".to_string(),
-        options.source_branch,
-        "--target".to_string(),
-        target_branch,
-    ];
+    let client = reqwest::Client::new();
+    let url = format!(
+        "https://api.github.com/repos/{}/{}/pulls",
+        config.owner, config.repo
+    );
 
-    if !labels.is_empty() {
-        args.push("--labels".to_string());
-        args.push(labels.join(","));
-    }
+    let body = serde_json::json!({
+        "title": options.title,
+        "body": options.body,
+        "head": options.source_branch,
+        "base": target_branch,
+    });
 
-    let output = Command::new("opencode")
-        .args(&args)
-        .output()
-        .map_err(|e| anyhow::anyhow!("Failed to execute opencode command: {}", e))?;
+    let resp = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", config.token))
+        .header("User-Agent", "opencode-agent-rust")
+        .header("Accept", "application/vnd.github.v3+json")
+        .json(&body)
+        .send()
+        .await?;
 
-    if output.status.success() {
+    if resp.status().is_success() {
         Logger::success("PR created successfully");
         Ok(true)
     } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(anyhow::anyhow!("Command failed: {}", stderr))
+        let status = resp.status();
+        let text = resp.text().await?;
+        Err(anyhow::anyhow!("GitHub API error ({}): {}", status, text))
     }
 }
